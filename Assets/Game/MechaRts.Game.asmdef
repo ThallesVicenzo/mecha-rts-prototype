@@ -1,0 +1,16 @@
+{
+    "name": "MechaRts.Game",
+    "rootNamespace": "MechaRts.Game",
+    "references": [
+        "MechaRts.Simulation"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
