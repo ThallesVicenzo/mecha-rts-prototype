@@ -8,10 +8,28 @@ namespace MechaRts.Sim
         Draw
     }
 
+    public enum BattleMode
+    {
+        Skirmish,
+        Duel,
+        Colossus
+    }
+
+    public enum TroopRole
+    {
+        Attack,
+        Tank,
+        Support
+    }
+
     public enum TroopKind
     {
         Rifle,
-        Heavy
+        Cannon,
+        Vanguard,
+        Heavy,
+        Banner,
+        Medic
     }
 
     public enum BattleNotice
@@ -19,7 +37,8 @@ namespace MechaRts.Sim
         None,
         NeedPoints,
         TroopCap,
-        Deployed
+        Deployed,
+        OutOfRange
     }
 
     public enum SimEventType
@@ -38,8 +57,15 @@ namespace MechaRts.Sim
         public float AimY;
         public bool Fire;
         public bool Dash;
+        public bool ToggleHover;
+        public bool Melee;
+        public float Climb;
         public bool DeployRifle;
         public bool DeployHeavy;
+        public bool DeployAt;
+        public TroopKind DeployKind;
+        public float DeployX;
+        public float DeployY;
     }
 
     public struct SimEvent
@@ -63,6 +89,21 @@ namespace MechaRts.Sim
         public float DashCooldown;
         public float DashTime;
         public float DeployPoints;
+        public float Altitude;
+        public float FlightTarget;
+        public bool WantHover;
+        public float StanceCooldown;
+        public float HitRadius;
+        public float MaxHp;
+        public float MoveSpeed;
+        public float TurnRate;
+        public float ShotDamage;
+        public float FireInterval;
+        public float MeleeDamage;
+        public float MeleeInterval;
+        public float MeleeCooldown;
+        public float AttackMul;
+        public float BodyScale;
         public bool JustFired;
     }
 
@@ -75,6 +116,8 @@ namespace MechaRts.Sim
         public SimVec2 Vel;
         public float Facing;
         public float Hp;
+        public float MaxHp;
+        public float AttackMul;
         public float FireCooldown;
         public int Slot;
         public bool JustFired;
@@ -89,13 +132,25 @@ namespace MechaRts.Sim
         public float Age;
         public float Life;
         public float Radius;
+        public float Damage;
+        public float Height;
         public bool IsBeam;
+        public bool IgnoresCover;
     }
 
     public sealed class Obstacle
     {
         public SimVec2 Center;
         public SimVec2 Half;
+    }
+
+    public sealed class BossPart
+    {
+        public string Name;
+        public SimVec2 Offset;
+        public float Radius;
+        public float Hp;
+        public float MaxHp;
     }
 
     public struct SimRng

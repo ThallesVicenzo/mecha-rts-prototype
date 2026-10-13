@@ -22,6 +22,19 @@ namespace MechaRts.Sim
         public const float DashDuration = 0.18f;
         public const float DashCooldown = 1.35f;
 
+        public const float HoverClear = 0.62f;
+        public const float HoverRise = 0.72f;
+        public const float HoverSpeed = 11.2f;
+        public const float StanceCooldown = 1.6f;
+        public const float HoverTroopDamage = 1.45f;
+        public const float AntiAirAggro = 11.5f;
+        public const float GroundCamera = 12.2f;
+        public const float HoverCamera = 15.6f;
+        public const float HoverVisualLift = 1.9f;
+
+        public const float DeployRange = 15f;
+        public const float ShotHeightWindow = 2.8f;
+        public const float FlightRise = 4.2f;
         public const float MaxDeploy = 100f;
         public const float DeployRegen = 9f;
         public const float RifleCost = 24f;
