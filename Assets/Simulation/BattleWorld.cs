@@ -15,6 +15,7 @@ namespace MechaRts.Sim
         readonly List<Troop> _troops = new List<Troop>(40);
         readonly List<Shot> _shots = new List<Shot>(48);
         readonly List<Obstacle> _obstacles = new List<Obstacle>(8);
+        readonly List<BossPart> _parts = new List<BossPart>(4);
 
         public readonly List<SimEvent> Events = new List<SimEvent>(64);
 
@@ -25,6 +26,7 @@ namespace MechaRts.Sim
         public int Epoch { get; private set; }
         public int Seed { get; private set; }
         public float Time { get; private set; }
+        public BattleMode Mode { get; private set; }
         public BattleOutcome Outcome { get; private set; }
         public bool AiEnabled = true;
         public bool HasRally { get; private set; }
@@ -39,9 +41,16 @@ namespace MechaRts.Sim
         public IReadOnlyList<Troop> Troops => _troops;
         public IReadOnlyList<Shot> Shots => _shots;
         public IReadOnlyList<Obstacle> Obstacles => _obstacles;
+        public IReadOnlyList<BossPart> Parts => _parts;
 
         public BattleWorld(int seed)
+            : this(seed, BattleMode.Skirmish)
         {
+        }
+
+        public BattleWorld(int seed, BattleMode mode)
+        {
+            Mode = mode;
             Reset(seed);
         }
 
@@ -94,19 +103,69 @@ namespace MechaRts.Sim
             _troops.Clear();
             _shots.Clear();
             _obstacles.Clear();
+            _parts.Clear();
             Events.Clear();
 
-            AddObstacle(0f, 0f, 1.15f, 1.15f);
-            AddObstacle(-7.5f, 3.2f, 2.4f, 0.65f);
-            AddObstacle(7.2f, -2.6f, 0.65f, 2.5f);
-            AddObstacle(-13.2f, -5.2f, 1.45f, 1.45f);
-            AddObstacle(12.4f, 6.1f, 1.7f, 1.0f);
-            AddObstacle(2.2f, 7.6f, 2.0f, 0.55f);
-
-            Player = AddMecha(0, true, new SimVec2(0f, -9f), MathF.PI * 0.5f);
-            Enemy = AddMecha(1, false, new SimVec2(0f, 9f), -MathF.PI * 0.5f);
-            SpawnSquad(Player, TroopKind.Rifle, true);
-            SpawnSquad(Enemy, TroopKind.Rifle, true);
+            if (Mode == BattleMode.Skirmish)
+            {
+                AddObstacle(0f, 0f, 1.15f, 1.15f);
+                AddObstacle(-7.5f, 3.2f, 2.4f, 0.65f);
+                AddObstacle(7.2f, -2.6f, 0.65f, 2.5f);
+                AddObstacle(-13.2f, -5.2f, 1.45f, 1.45f);
+                AddObstacle(12.4f, 6.1f, 1.7f, 1.0f);
+                AddObstacle(2.2f, 7.6f, 2.0f, 0.55f);
+                Player = AddMecha(0, true, new SimVec2(0f, -9f), MathF.PI * 0.5f);
+                Enemy = AddMecha(1, false, new SimVec2(0f, 9f), -MathF.PI * 0.5f);
+                SpawnSquad(Player, TroopKind.Rifle, true);
+                SpawnSquad(Enemy, TroopKind.Rifle, true);
+            }
+            else
+            {
+                if (Mode != BattleMode.Colossus)
+                {
+                    AddObstacle(-8f, 3.5f, 1.15f, 1.15f);
+                    AddObstacle(7.5f, -4f, 1.25f, 1.25f);
+                    AddObstacle(0f, 7f, 1.35f, 1.35f);
+                    AddObstacle(-5.5f, -6.5f, 1.05f, 1.05f);
+                    AddObstacle(6.5f, 6.2f, 1.2f, 1.2f);
+                    AddObstacle(0f, -2f, 1.1f, 1.1f);
+                }
+                if (Mode == BattleMode.Colossus)
+                {
+                    Player = AddMecha(0, true, new SimVec2(0f, -8.5f), MathF.PI * 0.5f);
+                    Enemy = AddMecha(1, false, new SimVec2(0f, 6.2f), -MathF.PI * 0.5f);
+                }
+                else
+                {
+                    Player = AddMecha(0, true, new SimVec2(-7f, -6f), 0.8f);
+                    Enemy = AddMecha(1, false, new SimVec2(7f, 6f), 0.8f + MathF.PI);
+                }
+                Player.MoveSpeed = Mode == BattleMode.Colossus ? 11.2f : 10.5f;
+                Enemy.MoveSpeed = Mode == BattleMode.Colossus ? 0f : 9.4f;
+                float sky = Mode == BattleMode.Colossus ? 5.4f : 3.2f;
+                Player.Altitude = sky;
+                Enemy.Altitude = Mode == BattleMode.Colossus ? 10.7f : 3.2f;
+                Player.FlightTarget = sky;
+                Enemy.FlightTarget = Enemy.Altitude;
+                if (Mode == BattleMode.Colossus)
+                {
+                    Enemy.HitRadius = 1.1f;
+                    Enemy.BodyScale = 3.3f;
+                    Enemy.TurnRate = 0f;
+                    Enemy.ShotDamage = 48f;
+                    Enemy.FireInterval = 1.05f;
+                    Enemy.MeleeDamage = 0f;
+                    AddBossPart("Cabeça", 0f, 2.35f, 0.95f, 340f);
+                    AddBossPart("Núcleo", 0f, 0.15f, 1.15f, 460f);
+                    AddBossPart("Ombro E", -2.7f, 1.05f, 1.0f, 280f);
+                    AddBossPart("Ombro D", 2.7f, 1.05f, 1.0f, 280f);
+                    float total = 0f;
+                    for (int i = 0; i < _parts.Count; i++)
+                        total += _parts[i].MaxHp;
+                    Enemy.MaxHp = total;
+                    Enemy.Hp = total;
+                }
+            }
             Notice = BattleNotice.None;
             NoticeTime = 0f;
             Events.Clear();
@@ -130,6 +189,7 @@ namespace MechaRts.Sim
             for (int i = 0; i < _troops.Count; i++)
                 _troops[i].JustFired = false;
 
+            RefreshAuras(dt);
             StepPlayer(dt, command);
             if (AiEnabled)
                 StepEnemy(dt);
@@ -139,8 +199,38 @@ namespace MechaRts.Sim
             StepTroops(dt);
             StepShots(dt);
             Separate();
+            PinColossus();
             Cull();
             ResolveOutcome();
+        }
+
+        void PinColossus()
+        {
+            if (Mode != BattleMode.Colossus)
+                return;
+
+            Enemy.Pos = new SimVec2(0f, 6.2f);
+            Enemy.Vel = SimVec2.Zero;
+            Enemy.Altitude = 10.7f;
+            Enemy.FlightTarget = 10.7f;
+            Enemy.Facing = -MathF.PI * 0.5f;
+            Player.Pos = new SimVec2(
+                SimGeom.Clamp(Player.Pos.X, -4.2f, 4.2f),
+                SimGeom.Clamp(Player.Pos.Y, -11.5f, -6.2f));
+            Player.Altitude = SimGeom.Clamp(Player.Altitude, 4.6f, 7.2f);
+            Player.FlightTarget = SimGeom.Clamp(Player.FlightTarget, 4.6f, 7.2f);
+        }
+
+        void AddBossPart(string name, float x, float y, float radius, float hp)
+        {
+            _parts.Add(new BossPart
+            {
+                Name = name,
+                Offset = new SimVec2(x, y),
+                Radius = radius,
+                Hp = hp,
+                MaxHp = hp
+            });
         }
 
         void StepPlayer(float dt, BattleCommand command)
@@ -148,16 +238,33 @@ namespace MechaRts.Sim
             if (Player.Hp <= 0f)
                 return;
 
+            if (Mode == BattleMode.Skirmish)
+            {
+                if (command.ToggleHover)
+                    Player.WantHover = !Player.WantHover;
+            }
+            else
+            {
+                Player.FlightTarget = SimGeom.Clamp(Player.FlightTarget + command.Climb * BattleTuning.FlightRise * dt, 1.1f, 8.4f);
+            }
+
             var wish = new SimVec2(command.MoveX, command.MoveY);
             DriveMecha(Player, wish, command.Dash, dt);
-            TurnToward(Player, new SimVec2(command.AimX, command.AimY) - Player.Pos, BattleTuning.MechaTurnRate, dt);
+            TurnToward(Player, new SimVec2(command.AimX, command.AimY) - Player.Pos, Player.TurnRate, dt);
 
             if (command.Fire)
                 TryFireMecha(Player);
-            if (command.DeployRifle)
-                SpawnSquad(Player, TroopKind.Rifle, false);
-            if (command.DeployHeavy)
-                SpawnSquad(Player, TroopKind.Heavy, false);
+            if (command.Melee)
+                TryMelee(Player);
+            if (Mode == BattleMode.Skirmish)
+            {
+                if (command.DeployRifle)
+                    SpawnSquad(Player, TroopKind.Rifle, false);
+                if (command.DeployHeavy)
+                    SpawnSquad(Player, TroopKind.Heavy, false);
+                if (command.DeployAt)
+                    SpawnSquadAt(Player, command.DeployKind, new SimVec2(command.DeployX, command.DeployY));
+            }
         }
 
         void StepEnemy(float dt)
@@ -169,6 +276,13 @@ namespace MechaRts.Sim
             float distSq = toPlayer.SqrMagnitude;
             float dist = MathF.Sqrt(distSq);
             SimVec2 dir = dist > 0.001f ? toPlayer * (1f / dist) : SimVec2.FromAngle(Enemy.Facing);
+            if (Mode != BattleMode.Skirmish)
+            {
+                StepEnemyDuel(dt, dist, dir);
+                return;
+            }
+
+            UpdateEnemyStance(dist, dt);
 
             SimVec2 wish;
             if (Enemy.Hp < BattleTuning.MechaHp * 0.32f && dist < 12f)
@@ -189,12 +303,81 @@ namespace MechaRts.Sim
 
             SimVec2 lead = Player.Pos + Player.Vel * 0.18f;
             SimVec2 aim = lead - Enemy.Pos;
-            TurnToward(Enemy, aim, BattleTuning.MechaTurnRate, dt);
+            TurnToward(Enemy, aim, Enemy.TurnRate, dt);
             float align = SimGeom.DeltaAngle(Enemy.Facing, aim.Angle);
-            if (dist < 26f && MathF.Abs(align) < 0.42f && HasLineOfSight(Enemy.Pos, Player.Pos))
+            bool clearLane = Enemy.Altitude >= BattleTuning.HoverClear || HasLineOfSight(Enemy.Pos, Player.Pos);
+            if (dist < 26f && MathF.Abs(align) < 0.42f && clearLane)
                 TryFireMecha(Enemy);
 
+            if (dist < Enemy.HitRadius + Player.HitRadius + 0.9f)
+                TryMelee(Enemy);
             AutoDeploy(Enemy);
+        }
+
+        void StepEnemyDuel(float dt, float dist, SimVec2 dir)
+        {
+            if (Mode == BattleMode.Colossus)
+            {
+                StepColossus(dt);
+                return;
+            }
+
+            Enemy.FlightTarget = SimGeom.Clamp(Player.Altitude + MathF.Sin(Time * 0.65f) * 1.35f, 1.1f, 8.4f);
+            float prefer = 7.5f;
+            SimVec2 wish;
+            if (dist > prefer + 3.2f)
+                wish = dir;
+            else if (dist < prefer - 2.2f)
+                wish = -dir;
+            else
+            {
+                var side = new SimVec2(-dir.Y, dir.X);
+                float sign = MathF.Sin(Time * 0.9f) >= 0f ? 1f : -1f;
+                wish = side * sign;
+            }
+
+            DriveMecha(Enemy, wish, dist < 5.5f, dt);
+            TurnToward(Enemy, Player.Pos - Enemy.Pos, Enemy.TurnRate, dt);
+            float align = SimGeom.DeltaAngle(Enemy.Facing, (Player.Pos - Enemy.Pos).Angle);
+            bool level = MathF.Abs(AirHeight(Enemy) - AirHeight(Player)) < 2.2f;
+            if (dist < 32f && MathF.Abs(align) < 0.45f && level)
+                TryFireMecha(Enemy);
+            if (dist < Enemy.HitRadius + Player.HitRadius + 1.1f)
+                TryMelee(Enemy);
+        }
+
+        void StepColossus(float dt)
+        {
+            if (Enemy.FireCooldown > 0f)
+                Enemy.FireCooldown -= dt;
+            Enemy.Facing = -MathF.PI * 0.5f;
+            TryFireMecha(Enemy);
+        }
+
+        void UpdateEnemyStance(float dist, float dt)
+        {
+            if (Enemy.StanceCooldown > 0f)
+            {
+                Enemy.StanceCooldown -= dt;
+                return;
+            }
+
+            bool blocked = !HasLineOfSight(Enemy.Pos, Player.Pos);
+            bool wantHover = Enemy.WantHover;
+            if (Enemy.Hp < BattleTuning.MechaHp * 0.3f)
+                wantHover = false;
+            else if (Player.Altitude >= BattleTuning.HoverClear)
+                wantHover = true;
+            else if (blocked && dist > 7f)
+                wantHover = true;
+            else if (!blocked)
+                wantHover = false;
+
+            if (wantHover == Enemy.WantHover)
+                return;
+
+            Enemy.WantHover = wantHover;
+            Enemy.StanceCooldown = BattleTuning.StanceCooldown;
         }
 
         void CoolMecha(Mecha mecha, float dt)
@@ -212,6 +395,8 @@ namespace MechaRts.Sim
             if (mecha.FireCooldown > 0f)
                 mecha.FireCooldown -= dt;
             mecha.DeployPoints = MathF.Min(BattleTuning.MaxDeploy, mecha.DeployPoints + BattleTuning.DeployRegen * dt);
+            if (mecha.MeleeCooldown > 0f)
+                mecha.MeleeCooldown -= dt;
 
             bool dashing = mecha.DashTime > 0f;
             if (!dashing && wantDash && mecha.DashCooldown <= 0f)
@@ -226,7 +411,24 @@ namespace MechaRts.Sim
             if (mag > 1f)
                 mag = 1f;
             SimVec2 direction = dashing ? mecha.DashDir : (mag > 0.001f ? SimVec2.Normalize(wish) : SimVec2.Zero);
-            float speed = dashing ? BattleTuning.DashSpeed : BattleTuning.MechaSpeed;
+            if (Mode == BattleMode.Skirmish)
+            {
+                float targetAlt = mecha.WantHover ? 1f : 0f;
+                if (mecha.Altitude < targetAlt)
+                    mecha.Altitude = MathF.Min(targetAlt, mecha.Altitude + BattleTuning.HoverRise * dt);
+                else
+                    mecha.Altitude = MathF.Max(targetAlt, mecha.Altitude - BattleTuning.HoverRise * dt);
+            }
+            else if (mecha.Altitude < mecha.FlightTarget)
+                mecha.Altitude = MathF.Min(mecha.FlightTarget, mecha.Altitude + BattleTuning.FlightRise * dt);
+            else
+                mecha.Altitude = MathF.Max(mecha.FlightTarget, mecha.Altitude - BattleTuning.FlightRise * dt);
+
+            bool airborne = Mode == BattleMode.Skirmish && mecha.Altitude >= BattleTuning.HoverClear;
+            float cruise = Mode == BattleMode.Skirmish
+                ? (airborne ? BattleTuning.HoverSpeed : BattleTuning.MechaSpeed)
+                : mecha.MoveSpeed;
+            float speed = dashing ? BattleTuning.DashSpeed : cruise;
             float accel = dashing ? 180f : BattleTuning.MechaAccel;
             if (dashing)
             {
@@ -235,7 +437,7 @@ namespace MechaRts.Sim
                     mecha.DashTime = 0f;
             }
 
-            ApplyMotion(ref mecha.Pos, ref mecha.Vel, direction, mag, speed, accel, BattleTuning.MechaRadius, dt);
+            ApplyMotion(ref mecha.Pos, ref mecha.Vel, direction, mag, speed, accel, mecha.HitRadius, dt, airborne);
         }
 
         void StepTroops(float dt)
@@ -262,16 +464,22 @@ namespace MechaRts.Sim
 
         void StepTroop(Troop troop, Mecha ally, int index, int total, float dt)
         {
-            float radius = Radius(troop.Kind);
-            float speed = troop.Kind == TroopKind.Heavy ? BattleTuning.HeavySpeed : BattleTuning.RifleSpeed;
-            bool found = TryAcquire(troop, out bool targetIsMecha, out int targetId, out SimVec2 targetPos);
+            TroopStats stats = TroopCatalog.Get(troop.Kind);
+            float radius = stats.Radius;
+            float speed = stats.Speed;
+            bool targetIsMecha = false;
+            int targetId = 0;
+            SimVec2 targetPos = SimVec2.Zero;
+            bool found = false;
+            if (stats.Role != TroopRole.Support)
+                found = TryAcquire(troop, out targetIsMecha, out targetId, out targetPos);
             SimVec2 wish;
             SimVec2 look;
 
             if (found)
             {
-                float preferred = troop.Kind == TroopKind.Heavy ? BattleTuning.HeavyPrefer : BattleTuning.RiflePrefer;
-                float range = troop.Kind == TroopKind.Heavy ? BattleTuning.HeavyRange : BattleTuning.RifleRange;
+                float preferred = stats.Prefer;
+                float range = stats.Range;
                 SimVec2 to = targetPos - troop.Pos;
                 float dist = to.Magnitude;
                 SimVec2 dir = dist > 0.001f ? to * (1f / dist) : SimVec2.FromAngle(troop.Facing);
@@ -300,7 +508,10 @@ namespace MechaRts.Sim
             else
             {
                 float arc = (index - (total - 1) * 0.5f) * 0.55f;
-                float follow = troop.Kind == TroopKind.Heavy ? 4.5f : 3.15f;
+                bool allyAirborne = Mode == BattleMode.Skirmish && ally.Altitude >= BattleTuning.HoverClear;
+                float follow = stats.Role == TroopRole.Tank
+                    ? (allyAirborne ? 3.6f : 4.6f)
+                    : (allyAirborne ? 2.7f : 3.15f);
                 SimVec2 dest = ally.Pos + SimVec2.FromAngle(ally.Facing + MathF.PI + arc) * follow;
                 SimVec2 to = dest - troop.Pos;
                 wish = to.SqrMagnitude > 0.35f ? SimVec2.Normalize(to) : SimVec2.Zero;
@@ -341,8 +552,11 @@ namespace MechaRts.Sim
             Mecha foe = troop.Team == 0 ? Enemy : Player;
             if (foe.Hp > 0f)
             {
-                float weighted = SimVec2.DistanceSq(troop.Pos, foe.Pos) * 1.35f;
-                if (weighted < best)
+                bool flyer = foe.Altitude >= BattleTuning.HoverClear;
+                float mechaAggro = flyer ? BattleTuning.AntiAirAggro : aggro;
+                float distSq = SimVec2.DistanceSq(troop.Pos, foe.Pos);
+                float weighted = distSq * (flyer ? 0.45f : 1.35f);
+                if (distSq <= mechaAggro * mechaAggro && weighted < best)
                 {
                     found = true;
                     targetIsMecha = true;
@@ -356,21 +570,27 @@ namespace MechaRts.Sim
 
         void FireTroop(Troop troop, bool targetIsMecha, int targetId, SimVec2 aim)
         {
-            if (troop.FireCooldown > 0f)
+            TroopStats stats = TroopCatalog.Get(troop.Kind);
+            if (troop.FireCooldown > 0f || stats.Role == TroopRole.Support)
                 return;
-            if (!HasLineOfSight(troop.Pos, aim))
+            float distSq = SimVec2.DistanceSq(troop.Pos, aim);
+            if (!stats.Melee && !HasLineOfSight(troop.Pos, aim))
+                return;
+            if (stats.Melee && distSq > stats.Range * stats.Range)
                 return;
 
-            float vsMecha = troop.Kind == TroopKind.Heavy ? BattleTuning.HeavyVsMecha : BattleTuning.RifleVsMecha;
-            float vsTroop = troop.Kind == TroopKind.Heavy ? BattleTuning.HeavyVsTroop : BattleTuning.RifleVsTroop;
-            troop.FireCooldown = troop.Kind == TroopKind.Heavy ? BattleTuning.HeavyInterval : BattleTuning.RifleInterval;
+            float vsMecha = stats.VsMecha * troop.AttackMul;
+            float vsTroop = stats.VsTroop * troop.AttackMul;
+            Mecha aimedMecha = targetIsMecha ? (targetId == Player.Id ? Player : Enemy) : null;
+            if (aimedMecha != null && Mode == BattleMode.Skirmish && aimedMecha.Altitude >= BattleTuning.HoverClear)
+                vsMecha *= BattleTuning.HoverTroopDamage;
+            troop.FireCooldown = stats.Interval;
             troop.JustFired = true;
 
             if (targetIsMecha)
             {
-                Mecha mecha = targetId == Player.Id ? Player : Enemy;
-                if (mecha.Hp > 0f)
-                    HurtMecha(mecha, vsMecha, aim);
+                if (aimedMecha != null && aimedMecha.Hp > 0f)
+                    HurtMecha(aimedMecha, vsMecha, aim);
             }
             else
             {
@@ -395,19 +615,36 @@ namespace MechaRts.Sim
             if (mecha.Hp <= 0f || mecha.FireCooldown > 0f)
                 return;
 
-            mecha.FireCooldown = BattleTuning.MechaFireInterval;
+            mecha.FireCooldown = mecha.FireInterval;
             mecha.JustFired = true;
-            SimVec2 dir = SimVec2.FromAngle(mecha.Facing);
-            var origin = mecha.Pos + dir * (BattleTuning.MechaRadius + 0.3f);
+            bool volley = Mode == BattleMode.Colossus && !mecha.IsPlayer;
+            if (volley)
+            {
+                SpawnMechaShot(mecha, mecha.Facing - 0.42f, 15f);
+                SpawnMechaShot(mecha, mecha.Facing, 15f);
+                SpawnMechaShot(mecha, mecha.Facing + 0.42f, 15f);
+            }
+            else
+                SpawnMechaShot(mecha, mecha.Facing, BattleTuning.MechaShotSpeed);
+        }
+
+        void SpawnMechaShot(Mecha mecha, float facing, float speed)
+        {
+            SimVec2 dir = SimVec2.FromAngle(facing);
+            var origin = mecha.Pos + dir * (mecha.HitRadius + 0.3f);
+            float height = Mode == BattleMode.Colossus && !mecha.IsPlayer ? AirHeight(Player) : AirHeight(mecha);
             _shots.Add(new Shot
             {
                 Team = mecha.Team,
                 Pos = origin,
                 Origin = origin,
-                Vel = dir * BattleTuning.MechaShotSpeed,
+                Vel = dir * speed,
                 Life = BattleTuning.MechaShotLife,
-                Radius = 0.14f,
-                IsBeam = false
+                Radius = Mode == BattleMode.Colossus && !mecha.IsPlayer ? 0.28f : 0.14f,
+                Damage = mecha.ShotDamage * mecha.AttackMul,
+                Height = height,
+                IsBeam = false,
+                IgnoresCover = Mode == BattleMode.Skirmish && mecha.Altitude >= BattleTuning.HoverClear
             });
             PushEvent(SimEventType.Muzzle, origin, mecha.Team);
         }
@@ -434,7 +671,8 @@ namespace MechaRts.Sim
                 {
                     SimVec2 point = start + delta * (step / (float)steps);
                     shot.Pos = point;
-                    if (!InsideArena(point, 0f) || HitsObstacle(point, shot.Radius))
+                    bool hitsCover = !shot.IgnoresCover && HitsObstacle(point, shot.Radius);
+                    if (!InsideArena(point, 0f) || hitsCover)
                     {
                         PushEvent(SimEventType.Hit, point, shot.Team);
                         dead = true;
@@ -457,10 +695,18 @@ namespace MechaRts.Sim
                 Mecha mecha = _mechas[i];
                 if (mecha.Team == shot.Team || mecha.Hp <= 0f)
                     continue;
-                float reach = shot.Radius + BattleTuning.MechaRadius;
+                if (Mode == BattleMode.Colossus && !mecha.IsPlayer)
+                {
+                    if (HitBossArmor(shot, point))
+                        return true;
+                    continue;
+                }
+                float reach = shot.Radius + mecha.HitRadius;
                 if (SimVec2.DistanceSq(point, mecha.Pos) > reach * reach)
                     continue;
-                HurtMecha(mecha, BattleTuning.MechaShotDamage, point);
+                if (MathF.Abs(shot.Height - AirHeight(mecha)) > BattleTuning.ShotHeightWindow)
+                    continue;
+                HurtMecha(mecha, shot.Damage, point);
                 return true;
             }
 
@@ -469,10 +715,49 @@ namespace MechaRts.Sim
                 Troop troop = _troops[i];
                 if (troop.Team == shot.Team || troop.Hp <= 0f)
                     continue;
-                float reach = shot.Radius + Radius(troop.Kind);
+                float reach = shot.Radius + TroopCatalog.Get(troop.Kind).Radius;
                 if (SimVec2.DistanceSq(point, troop.Pos) > reach * reach)
                     continue;
-                HurtTroop(troop, BattleTuning.MechaShotVsTroop, point);
+                if (MathF.Abs(shot.Height - 0.45f) > BattleTuning.ShotHeightWindow)
+                    continue;
+                HurtTroop(troop, shot.Damage, point);
+                return true;
+            }
+
+            return false;
+        }
+
+        bool HitBossArmor(Shot shot, SimVec2 point)
+        {
+            if (MathF.Abs(shot.Height - AirHeight(Enemy)) > 8f)
+                return false;
+
+            for (int i = 0; i < _parts.Count; i++)
+            {
+                BossPart part = _parts[i];
+                if (part.Hp <= 0f)
+                    continue;
+                SimVec2 center = Enemy.Pos + part.Offset;
+                float reach = shot.Radius + part.Radius;
+                if (SimVec2.DistanceSq(point, center) > reach * reach)
+                    continue;
+                part.Hp -= shot.Damage;
+                if (part.Hp < 0f)
+                    part.Hp = 0f;
+                float sum = 0f;
+                for (int p = 0; p < _parts.Count; p++)
+                    sum += _parts[p].Hp;
+                Enemy.Hp = sum;
+                PushEvent(SimEventType.Hit, center, Enemy.Team);
+                if (Enemy.Hp <= 0f)
+                    PushEvent(SimEventType.Death, Enemy.Pos, Enemy.Team);
+                return true;
+            }
+
+            const float armor = 4.6f;
+            if (SimVec2.DistanceSq(point, Enemy.Pos) <= armor * armor)
+            {
+                PushEvent(SimEventType.Hit, point, Enemy.Team);
                 return true;
             }
 
@@ -517,10 +802,28 @@ namespace MechaRts.Sim
                 SpawnSquad(mecha, TroopKind.Rifle, false);
         }
 
+        void SpawnSquadAt(Mecha mecha, TroopKind kind, SimVec2 anchor)
+        {
+            if (SimVec2.DistanceSq(mecha.Pos, anchor) > BattleTuning.DeployRange * BattleTuning.DeployRange)
+            {
+                if (mecha.IsPlayer)
+                    SetNotice(BattleNotice.OutOfRange);
+                return;
+            }
+
+            PlaceSquad(mecha, kind, false, anchor, true);
+        }
+
         void SpawnSquad(Mecha mecha, TroopKind kind, bool free)
         {
-            int count = kind == TroopKind.Rifle ? BattleTuning.RifleSquad : BattleTuning.HeavySquad;
-            float cost = kind == TroopKind.Rifle ? BattleTuning.RifleCost : BattleTuning.HeavyCost;
+            PlaceSquad(mecha, kind, free, mecha.Pos, false);
+        }
+
+        void PlaceSquad(Mecha mecha, TroopKind kind, bool free, SimVec2 anchor, bool atAnchor)
+        {
+            TroopStats stats = TroopCatalog.Get(kind);
+            int count = stats.Squad;
+            float cost = stats.Cost;
             if (!free)
             {
                 if (mecha.DeployPoints + 0.001f < cost)
@@ -551,8 +854,10 @@ namespace MechaRts.Sim
             for (int i = 0; i < count; i++)
             {
                 float lateral = (i - (count - 1) * 0.5f) * 0.9f;
-                float radius = Radius(kind);
-                SimVec2 pos = mecha.Pos + back * (BattleTuning.MechaRadius + 1.4f) + side * lateral;
+                float radius = stats.Radius;
+                SimVec2 pos = atAnchor
+                    ? anchor + SimVec2.FromAngle(i * 1.4f) * (0.7f + lateral)
+                    : mecha.Pos + back * (mecha.HitRadius + 1.4f) + side * lateral;
                 pos = FindClear(pos, radius);
                 _troops.Add(new Troop
                 {
@@ -561,7 +866,9 @@ namespace MechaRts.Sim
                     Kind = kind,
                     Pos = pos,
                     Facing = mecha.Facing,
-                    Hp = kind == TroopKind.Heavy ? BattleTuning.HeavyHp : BattleTuning.RifleHp,
+                    Hp = stats.Hp,
+                    MaxHp = stats.Hp,
+                    AttackMul = 1f,
                     FireCooldown = _rng.Range(0f, 0.35f),
                     Slot = _nextSlot++
                 });
@@ -570,30 +877,30 @@ namespace MechaRts.Sim
             PushEvent(SimEventType.Deploy, mecha.Pos, mecha.Team);
         }
 
-        void ApplyMotion(ref SimVec2 pos, ref SimVec2 vel, SimVec2 direction, float mag, float speed, float accel, float radius, float dt)
+        void ApplyMotion(ref SimVec2 pos, ref SimVec2 vel, SimVec2 direction, float mag, float speed, float accel, float radius, float dt, bool ignoreObstacles = false)
         {
-            SimVec2 steered = mag <= 0.001f ? SimVec2.Zero : Steer(pos, radius, direction);
+            SimVec2 steered = mag <= 0.001f ? SimVec2.Zero : Steer(pos, radius, direction, ignoreObstacles);
             SimVec2 desired = steered * (speed * mag);
             vel = SimVec2.MoveTowards(vel, desired, accel * dt);
-            SimVec2 next = Slide(pos, vel * dt, radius);
+            SimVec2 next = Slide(pos, vel * dt, radius, ignoreObstacles);
             if ((next - pos).SqrMagnitude < vel.SqrMagnitude * dt * dt * 0.2f)
                 vel = SimVec2.Zero;
             pos = next;
         }
 
-        SimVec2 Steer(SimVec2 pos, float radius, SimVec2 direction)
+        SimVec2 Steer(SimVec2 pos, float radius, SimVec2 direction, bool ignoreObstacles)
         {
             if (direction.SqrMagnitude < 1e-6f)
                 return SimVec2.Zero;
             direction = SimVec2.Normalize(direction);
             float look = radius + 0.9f;
-            if (!Blocked(pos + direction * look, radius))
+            if (!Blocked(pos + direction * look, radius, ignoreObstacles))
                 return direction;
 
             var left = new SimVec2(-direction.Y, direction.X);
             var right = new SimVec2(direction.Y, -direction.X);
-            bool openLeft = !Blocked(pos + left * look, radius);
-            bool openRight = !Blocked(pos + right * look, radius);
+            bool openLeft = !Blocked(pos + left * look, radius, ignoreObstacles);
+            bool openRight = !Blocked(pos + right * look, radius, ignoreObstacles);
             if (openLeft && !openRight)
                 return SimVec2.Normalize(direction + left * 1.25f);
             if (openRight && !openLeft)
@@ -607,16 +914,16 @@ namespace MechaRts.Sim
             return direction;
         }
 
-        SimVec2 Slide(SimVec2 pos, SimVec2 delta, float radius)
+        SimVec2 Slide(SimVec2 pos, SimVec2 delta, float radius, bool ignoreObstacles)
         {
             SimVec2 next = pos + delta;
-            if (!Blocked(next, radius))
+            if (!Blocked(next, radius, ignoreObstacles))
                 return next;
             var xOnly = new SimVec2(pos.X + delta.X, pos.Y);
-            if (!Blocked(xOnly, radius))
+            if (!Blocked(xOnly, radius, ignoreObstacles))
                 return xOnly;
             var yOnly = new SimVec2(pos.X, pos.Y + delta.Y);
-            if (!Blocked(yOnly, radius))
+            if (!Blocked(yOnly, radius, ignoreObstacles))
                 return yOnly;
             return pos;
         }
@@ -644,7 +951,7 @@ namespace MechaRts.Sim
                         Mecha mecha = _mechas[m];
                         if (mecha.Hp <= 0f)
                             continue;
-                        float min = ra + BattleTuning.MechaRadius + 0.08f;
+                        float min = ra + mecha.HitRadius + 0.08f;
                         SimVec2 away = a.Pos - mecha.Pos;
                         float sq = away.SqrMagnitude;
                         if (sq >= min * min)
@@ -658,13 +965,15 @@ namespace MechaRts.Sim
                 }
 
                 if (_mechas.Count == 2 && Player.Hp > 0f && Enemy.Hp > 0f)
-                    PushApart(ref Player.Pos, BattleTuning.MechaRadius, ref Enemy.Pos, BattleTuning.MechaRadius);
+                    PushApart(ref Player.Pos, Player.HitRadius, ref Enemy.Pos, Enemy.HitRadius);
 
                 for (int m = 0; m < _mechas.Count; m++)
                 {
                     Mecha mecha = _mechas[m];
-                    mecha.Pos = PushOutOfObstacles(mecha.Pos, BattleTuning.MechaRadius);
-                    mecha.Pos = ClampToArena(mecha.Pos, BattleTuning.MechaRadius);
+                    bool flyOver = Mode == BattleMode.Skirmish && mecha.Altitude >= BattleTuning.HoverClear;
+                    if (!flyOver)
+                        mecha.Pos = PushOutOfObstacles(mecha.Pos, mecha.HitRadius);
+                    mecha.Pos = ClampToArena(mecha.Pos, mecha.HitRadius);
                 }
             }
         }
@@ -713,6 +1022,16 @@ namespace MechaRts.Sim
                 Pos = pos,
                 Facing = facing,
                 Hp = BattleTuning.MechaHp,
+                MaxHp = BattleTuning.MechaHp,
+                HitRadius = BattleTuning.MechaRadius,
+                MoveSpeed = BattleTuning.MechaSpeed,
+                TurnRate = BattleTuning.MechaTurnRate,
+                ShotDamage = BattleTuning.MechaShotDamage,
+                FireInterval = BattleTuning.MechaFireInterval,
+                MeleeDamage = 120f,
+                MeleeInterval = 0.75f,
+                AttackMul = 1f,
+                BodyScale = 1f,
                 DeployPoints = 30f,
                 DashDir = SimVec2.FromAngle(facing)
             };
@@ -796,7 +1115,14 @@ namespace MechaRts.Sim
             return pos;
         }
 
-        bool Blocked(SimVec2 pos, float radius) => !InsideArena(pos, radius) || HitsObstacle(pos, radius);
+        bool Blocked(SimVec2 pos, float radius, bool ignoreObstacles = false)
+        {
+            if (!InsideArena(pos, radius))
+                return true;
+            if (ignoreObstacles)
+                return false;
+            return HitsObstacle(pos, radius);
+        }
 
         bool HitsObstacle(SimVec2 pos, float radius)
         {
@@ -823,7 +1149,97 @@ namespace MechaRts.Sim
             return pos;
         }
 
-        static float Radius(TroopKind kind) => kind == TroopKind.Heavy ? BattleTuning.HeavyRadius : BattleTuning.RifleRadius;
+        static float Radius(TroopKind kind) => TroopCatalog.Get(kind).Radius;
+
+        float AirHeight(Mecha mecha)
+        {
+            if (Mode == BattleMode.Skirmish)
+                return mecha.Altitude * BattleTuning.HoverVisualLift;
+            return mecha.Altitude;
+        }
+
+        void RefreshAuras(float dt)
+        {
+            Player.AttackMul = 1f;
+            Enemy.AttackMul = 1f;
+            for (int i = 0; i < _troops.Count; i++)
+                _troops[i].AttackMul = 1f;
+
+            for (int i = 0; i < _troops.Count; i++)
+            {
+                Troop source = _troops[i];
+                if (source.Hp <= 0f)
+                    continue;
+                TroopStats stats = TroopCatalog.Get(source.Kind);
+                if (stats.Role != TroopRole.Support || stats.Aura <= 0f)
+                    continue;
+                float auraSq = stats.Aura * stats.Aura;
+                Mecha allyMecha = source.Team == 0 ? Player : Enemy;
+                if (stats.AttackBuff > 0f && SimVec2.DistanceSq(source.Pos, allyMecha.Pos) <= auraSq)
+                    allyMecha.AttackMul += stats.AttackBuff;
+                if (stats.HealPerSecond > 0f && SimVec2.DistanceSq(source.Pos, allyMecha.Pos) <= auraSq)
+                    allyMecha.Hp = MathF.Min(allyMecha.MaxHp, allyMecha.Hp + stats.HealPerSecond * dt);
+
+                for (int j = 0; j < _troops.Count; j++)
+                {
+                    Troop ally = _troops[j];
+                    if (ally.Team != source.Team || ally.Hp <= 0f || ally == source)
+                        continue;
+                    if (SimVec2.DistanceSq(source.Pos, ally.Pos) > auraSq)
+                        continue;
+                    if (stats.AttackBuff > 0f)
+                        ally.AttackMul += stats.AttackBuff;
+                    if (stats.HealPerSecond > 0f)
+                        ally.Hp = MathF.Min(ally.MaxHp, ally.Hp + stats.HealPerSecond * dt);
+                }
+            }
+        }
+
+        void TryMelee(Mecha mecha)
+        {
+            if (mecha.MeleeCooldown > 0f || mecha.Hp <= 0f)
+                return;
+
+            Mecha foe = mecha.Team == 0 ? Enemy : Player;
+            float reach = mecha.HitRadius + foe.HitRadius + 0.9f;
+            bool connected = false;
+            if (foe.Hp > 0f
+                && SimVec2.DistanceSq(mecha.Pos, foe.Pos) <= reach * reach
+                && MathF.Abs(AirHeight(mecha) - AirHeight(foe)) < 2.6f)
+            {
+                HurtMecha(foe, mecha.MeleeDamage * mecha.AttackMul, foe.Pos);
+                connected = true;
+            }
+            else
+            {
+                float troopReach = mecha.HitRadius + 1.35f;
+                Troop victim = null;
+                float best = troopReach * troopReach;
+                for (int i = 0; i < _troops.Count; i++)
+                {
+                    Troop troop = _troops[i];
+                    if (troop.Team == mecha.Team || troop.Hp <= 0f)
+                        continue;
+                    float dist = SimVec2.DistanceSq(mecha.Pos, troop.Pos);
+                    if (dist >= best)
+                        continue;
+                    best = dist;
+                    victim = troop;
+                }
+
+                if (victim != null)
+                {
+                    HurtTroop(victim, mecha.MeleeDamage * 0.5f * mecha.AttackMul, victim.Pos);
+                    connected = true;
+                }
+            }
+
+            if (!connected)
+                return;
+
+            mecha.MeleeCooldown = mecha.MeleeInterval;
+            PushEvent(SimEventType.Muzzle, mecha.Pos, mecha.Team);
+        }
 
         void SetNotice(BattleNotice notice)
         {

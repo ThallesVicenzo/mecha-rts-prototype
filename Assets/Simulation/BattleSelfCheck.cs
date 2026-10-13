@@ -12,6 +12,10 @@ namespace MechaRts.Sim
             if (error != null) return error;
             error = CoverBlocksShot();
             if (error != null) return error;
+            error = HoverClearsCover();
+            if (error != null) return error;
+            error = HoverCrossesCover();
+            if (error != null) return error;
             error = DeploySpendsAndSpawns();
             if (error != null) return error;
             error = DeathEndsBattle();
@@ -68,6 +72,40 @@ namespace MechaRts.Sim
             return null;
         }
 
+        static string HoverClearsCover()
+        {
+            var world = new BattleWorld(7);
+            world.AiEnabled = false;
+            world.Player.Pos = new SimVec2(0f, -4f);
+            world.Player.Facing = MathF.PI * 0.5f;
+            world.Player.Altitude = 1f;
+            world.Player.WantHover = true;
+            world.Enemy.Pos = new SimVec2(0f, 4f);
+            var command = new BattleCommand { Fire = true, AimX = 0f, AimY = 12f };
+            for (int i = 0; i < 40; i++)
+                world.Tick(BattleWorld.TickDt, command);
+            if (world.Enemy.Hp > BattleTuning.MechaHp - 30f)
+                return "hover shot should clear cover. hp=" + world.Enemy.Hp.ToString("0");
+            if (world.Player.Altitude < BattleTuning.HoverClear)
+                return "hover altitude was not held";
+            return null;
+        }
+
+        static string HoverCrossesCover()
+        {
+            var world = new BattleWorld(8);
+            world.AiEnabled = false;
+            world.Player.Pos = new SimVec2(0f, -3.2f);
+            world.Player.Altitude = 1f;
+            world.Player.WantHover = true;
+            var command = new BattleCommand { MoveY = 1f, AimX = 0f, AimY = 12f };
+            for (int i = 0; i < 50; i++)
+                world.Tick(BattleWorld.TickDt, command);
+            if (world.Player.Pos.Y < 1.2f)
+                return "hover should cross the center cover. y=" + world.Player.Pos.Y.ToString("0.00");
+            return null;
+        }
+
         static string DeploySpendsAndSpawns()
         {
             var world = new BattleWorld(4);
@@ -121,6 +159,8 @@ namespace MechaRts.Sim
                 return "mecha position became non-finite";
             if (!float.IsFinite(world.Player.Hp) || !float.IsFinite(world.Enemy.Hp))
                 return "mecha hp became non-finite";
+            if (!float.IsFinite(world.Player.Altitude) || !float.IsFinite(world.Enemy.Altitude))
+                return "mecha altitude became non-finite";
             if (world.CountTroops(0) > BattleTuning.MaxTroops || world.CountTroops(1) > BattleTuning.MaxTroops)
                 return "troop cap exceeded";
             for (int i = 0; i < world.Troops.Count; i++)
